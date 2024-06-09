@@ -1,12 +1,13 @@
 (ns tp-sistemas-l.core
   (:require [clojure.string :as str])
-  (:require [clojure.math]))
+  (:require [clojure.math])
+  (:import (java.util Locale)))
 
 (defn vec2d [x y] {:x x :y y})
 
 (defn vec2d-x [v] (:x v))
 
-(defn vec2d-y [v] {:y v})
+(defn vec2d-y [v] (:y v))
 
 (defn tortuga
   "crea una nueva tortuga con sus coordenadas y angulo iniciales"
@@ -24,12 +25,12 @@
   [t]
   (let [angulo-actual (clojure.math/to-radians (tortuga-angulo t))
         posicion-actual (tortuga-coordenadas t)
-        seno-angulo ((clojure.math/sin angulo-actual))
-        coseno-angulo ((clojure.math/cos angulo-actual))
+        seno-angulo (clojure.math/sin angulo-actual)
+        coseno-angulo (clojure.math/cos angulo-actual)
         nuevo-x (+ coseno-angulo (vec2d-x posicion-actual))
         nuevo-y (+ seno-angulo (vec2d-y posicion-actual))
         nueva-posicion (vec2d nuevo-x nuevo-y)]
-    tortuga nueva-posicion  (tortuga-angulo t)))
+    (tortuga nueva-posicion  (tortuga-angulo t))))
 
 
 (defn tortuga-rotar
@@ -98,44 +99,50 @@
 (defn linea-formateada
   "dada una posicion de inicio y una de fin, obtiene una cadena con el formato deseado de svg"
   [inicio fin]
-  (let [s "<line x1=\"%d\" y1=\"%d\" x2=\"%d\" y2=\"%d\" stroke-width=\"1\" stroke=\"black\" />"]
-    (apply #(format s %) (concat inicio fin))))
+  (let [s "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" stroke-width=\"1\" stroke=\"black\" />"
+        coords-inicio (vec (vals inicio))
+        coords-final (vec (vals fin))]
+    (Locale/setDefault Locale/US)
+    (apply #(format s %1 %2 %3 %4) (concat coords-inicio coords-final))))
 
 
 (defn aplicar-accion
   "recibe una tortuga y una pila que seran afectadas por las acciones recibidas"
-  [t p & [accion angulo]]
-  (let [estados {:tortuga t :pila p :pluma true}
-        acciones {:adelante (update estados :tortuga tortuga-avanzar)
-                  :pluma-arriba (assoc estados :tortuga (tortuga-avanzar t) :pluma false)
-                  :derecha (update estados :tortuga #(tortuga-rotar % angulo))
-                  :izquierda (update estados :tortuga #(tortuga-rotar % (- angulo)))
-                  :invertir (update estados :tortuga #(tortuga-rotar % 180))
-                  :apilar (update estados :pila #(cons t %))
-                  :desapilar (update estados :pila pop)}]
-    (accion acciones)))
+  [t p v]
+  (let [accion (first v)
+        angulo (second v)
+        estados {:tortuga t :pila p :pluma true}
+        acciones {:adelante #(update % :tortuga tortuga-avanzar),
+                  :pluma-arriba #(assoc % :tortuga (tortuga-avanzar t) :pluma false),
+                  :derecha (fn [d] (update d :tortuga #(tortuga-rotar % angulo))),
+                  :izquierda (fn [d] (update d :tortuga #(tortuga-rotar % (- angulo)))),
+                  :invertir (fn [d] (update d :tortuga #(tortuga-rotar % 180))),
+                  :apilar (fn [d] (update d :pila #(cons t %))),
+                  :desapilar #(update % :pila pop)}]
+    ((accion acciones) estados)))
 
 
 (defn ejecutar-instrucciones
   "aplica las acciones de la secuencia de instrucciones
    tiene como precondicion que el archivo de salida este abierto"
   [wrtr instrucciones]
-  (loop [pila-tortugas (list (tortuga (vec2d 0 0) 0))
+  (loop [tortuga-actual (tortuga (vec2d 0.0 0.0) 0)
+         pila-tortugas (list)
          secuencia instrucciones]
-    (if (not (nil? secuencia))
-      (let [tortuga-actual (peek pila-tortugas)
-            siguiente-instruccion (first instrucciones)
+    (if (empty? secuencia)
+      nil
+      (let [siguiente-instruccion (first secuencia)
             estados (aplicar-accion tortuga-actual pila-tortugas siguiente-instruccion)
             linea (linea-formateada (tortuga-coordenadas tortuga-actual) (tortuga-coordenadas (:tortuga estados)))]
         (if (:pluma estados) (.write wrtr linea))
-        (recur (:p estados) (rest secuencia))))))
+        (recur (:tortuga estados) (:p estados) (rest secuencia))))))
 
 
 (defn escribir-archivo
   "escribe un archivo con formato svg, siguiendo las instrucciones recibidas"
   [nombre-archivo instrucciones]
-  (with-open [wrtr (clojure.java.io/writer nombre-archivo :append true)]
-    (.write wrtr "<svg viewBox=\"0 0 300 200\" xmlns=\"http://www.w3.org/2000/svg\">")
+  (with-open [wrtr (clojure.java.io/writer nombre-archivo)]
+    (.write wrtr "<svg viewBox=\"-50 -150 300 200\" xmlns=\"http://www.w3.org/2000/svg\">")
     (ejecutar-instrucciones wrtr instrucciones)
     (.write wrtr "</svg>")))
 
@@ -150,7 +157,5 @@
         archivo-salida (nth args 2)
         lineas (leer-archivo archivo-entrada)
         sistema (parsear-sistema-L lineas)
-        comandos (generar-comandos (expandir (:axioma sistema) (:reglas sistema) iteraciones) (:angulo sis4))
-        ]
-    (escribir-archivo archivo-salida comandos)
-    (println comandos)))
+        comandos (generar-comandos (expandir (:axioma sistema) (:reglas sistema) iteraciones) (:angulo sistema))]
+    (escribir-archivo archivo-salida comandos)))
