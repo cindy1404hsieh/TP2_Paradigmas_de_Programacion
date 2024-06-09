@@ -27,8 +27,8 @@
         posicion-actual (tortuga-coordenadas t)
         seno-angulo (clojure.math/sin angulo-actual)
         coseno-angulo (clojure.math/cos angulo-actual)
-        nuevo-x (+ coseno-angulo (vec2d-x posicion-actual))
-        nuevo-y (+ seno-angulo (vec2d-y posicion-actual))
+        nuevo-x (+ (* 10 coseno-angulo) (vec2d-x posicion-actual))
+        nuevo-y (+ (* 10 seno-angulo) (vec2d-y posicion-actual))
         nueva-posicion (vec2d nuevo-x nuevo-y)]
     (tortuga nueva-posicion  (tortuga-angulo t))))
 
@@ -62,17 +62,18 @@
   "convierte una cadena de caracteres en una secuencia de comandos especificos
   segun las reglas de sistema L."
   [cadena angulo]
-  (map #(case %
-          \F [:adelante 1]
-          \G [:adelante 1]
-          \f [:pluma-arriba]
-          \g [:pluma-abajo]
-          \+ [:derecha angulo]
-          \- [:izquierda angulo]
-          \| [:invertir]
-          \[ [:apilar]
-          \] [:desapilar]
-          nil) cadena))
+  (filter (comp not nil?)
+          (map #(case %
+                     \F [:adelante 1]
+                     \G [:adelante 1]
+                     \f [:pluma-arriba]
+                     \g [:pluma-arriba]
+                     \+ [:derecha angulo]
+                     \- [:izquierda angulo]
+                     \| [:invertir]
+                     \[ [:apilar]
+                     \] [:desapilar]
+                     nil) cadena)) )
 
 
 (defn parsear-sistema-L
@@ -117,8 +118,9 @@
                   :derecha (fn [d] (update d :tortuga #(tortuga-rotar % angulo))),
                   :izquierda (fn [d] (update d :tortuga #(tortuga-rotar % (- angulo)))),
                   :invertir (fn [d] (update d :tortuga #(tortuga-rotar % 180))),
-                  :apilar (fn [d] (update d :pila #(cons t %))),
-                  :desapilar #(update % :pila pop)}]
+                  :apilar (fn [d] (update d :pila #(conj % t))),
+                  :desapilar #(assoc % :tortuga (first p) :pila (pop p))}]
+    (println estados)
     ((accion acciones) estados)))
 
 
@@ -133,9 +135,10 @@
       nil
       (let [siguiente-instruccion (first secuencia)
             estados (aplicar-accion tortuga-actual pila-tortugas siguiente-instruccion)
+            f (println estados)
             linea (linea-formateada (tortuga-coordenadas tortuga-actual) (tortuga-coordenadas (:tortuga estados)))]
         (if (:pluma estados) (.write wrtr linea))
-        (recur (:tortuga estados) (:p estados) (rest secuencia))))))
+        (recur (:tortuga estados) (:pila estados) (rest secuencia))))))
 
 
 (defn escribir-archivo
