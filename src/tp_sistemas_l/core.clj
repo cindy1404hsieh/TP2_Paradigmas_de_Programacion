@@ -22,8 +22,7 @@
   "hace que la tortuga que recibe avanze una unidad, actualizando sus coordenadas
    segun el angulo actual de la tortuga"
   [t]
-  (let [
-        angulo-actual (clojure.math/to-radians (tortuga-angulo t))
+  (let [angulo-actual (clojure.math/to-radians (tortuga-angulo t))
         posicion-actual (tortuga-coordenadas t)
         seno-angulo ((clojure.math/sin angulo-actual))
         coseno-angulo ((clojure.math/cos angulo-actual))
@@ -95,10 +94,13 @@
   (with-open [reader (clojure.java.io/reader nombre-archivo)]
     (doall (line-seq reader))))
 
+
 (defn linea-formateada
-      [inicio fin]
-      (let [s "<line x1=\"%d\" y1=\"%d\" x2=\"%d\" y2=\"%d\" stroke-width=\"1\" stroke=\"black\" />"]
-        (apply #(format s %) (concat inicio fin))))
+  "dada una posicion de inicio y una de fin, obtiene una cadena con el formato deseado de svg"
+  [inicio fin]
+  (let [s "<line x1=\"%d\" y1=\"%d\" x2=\"%d\" y2=\"%d\" stroke-width=\"1\" stroke=\"black\" />"]
+    (apply #(format s %) (concat inicio fin))))
+
 
 (defn aplicar-accion
   "recibe una tortuga y una pila que seran afectadas por las acciones recibidas"
@@ -110,34 +112,32 @@
                   :izquierda (update estados :tortuga #(tortuga-rotar % (- angulo)))
                   :invertir (update estados :tortuga #(tortuga-rotar % 180))
                   :apilar (update estados :pila #(cons t %))
-                  :desapilar (update estados :pila pop)}
-        ]
+                  :desapilar (update estados :pila pop)}]
     (accion acciones)))
 
 
+(defn ejecutar-instrucciones
+  "aplica las acciones de la secuencia de instrucciones
+   tiene como precondicion que el archivo de salida este abierto"
+  [wrtr instrucciones]
+  (loop [pila-tortugas (list (tortuga (vec2d 0 0) 0))
+         secuencia instrucciones]
+    (if (not (nil? secuencia))
+      (let [tortuga-actual (peek pila-tortugas)
+            siguiente-instruccion (first instrucciones)
+            estados (aplicar-accion tortuga-actual pila-tortugas siguiente-instruccion)
+            linea (linea-formateada (tortuga-coordenadas tortuga-actual) (tortuga-coordenadas (:tortuga estados)))]
+        (if (:pluma estados) (.write wrtr linea))
+        (recur (:p estados) (rest secuencia))))))
 
-;(defn escribir-archivo
-;  "escribe un archivo con formato svg, siguiendo las instrucciones recibidas"
-;  [nombre-archivo instrucciones angulo]
-;  (with-open [wrtr (clojure.java.io/writer nombre-archivo :append true)]
-;    (.write wrtr "<svg viewBox=\"0 0 300 200\" xmlns=\"http://www.w3.org/2000/svg\">")
-;
-;    (loop [pila-tortugas (list (tortuga (vec2d 0 0) 0))
-;           secuencia instrucciones]
-;      (let [tortuga-actual (peek pila-tortugas)
-;            siguiente (first secuencia)
-;            acciones {:adelante
-;                      ((tortuga-avanzar tortuga-actual) )
-;                      :pluma-arriba
-;                      :derecha (tortuga-rotar tortuga-actual (- (second siguiente)))
-;                      :izquierda (tortuga-rotar tortuga-actual (second siguiente))
-;                      :invertir (tortuga-rotar tortuga-actual 180)
-;                      :apilar
-;                      :desapilar}
-;            ]
-;        ((first siguiente) acciones)))
-;    (.write wrtr "</svg>")
-;    ))
+
+(defn escribir-archivo
+  "escribe un archivo con formato svg, siguiendo las instrucciones recibidas"
+  [nombre-archivo instrucciones]
+  (with-open [wrtr (clojure.java.io/writer nombre-archivo :append true)]
+    (.write wrtr "<svg viewBox=\"0 0 300 200\" xmlns=\"http://www.w3.org/2000/svg\">")
+    (ejecutar-instrucciones wrtr instrucciones)
+    (.write wrtr "</svg>")))
 
 
 (defn -main
@@ -150,8 +150,7 @@
         archivo-salida (nth args 2)
         lineas (leer-archivo archivo-entrada)
         sistema (parsear-sistema-L lineas)
-        comandos (expandir (:axioma sistema) (:reglas sistema) iteraciones)
+        comandos (generar-comandos (expandir (:axioma sistema) (:reglas sistema) iteraciones) (:angulo sis4))
         ]
-    ;(escribir-archivo archivo-salida comandos)
-    ;(println comandos)
-    (println (type (first comandos)))))
+    (escribir-archivo archivo-salida comandos)
+    (println comandos)))
