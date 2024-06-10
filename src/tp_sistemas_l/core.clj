@@ -1,48 +1,8 @@
 (ns tp-sistemas-l.core
-  (:require [clojure.string :as str])
   (:require [clojure.math])
+  (:use [tp-sistemas-l.parse])
+  (:use [tp-sistemas-l.tortuga])
   (:import (java.util Locale)))
-
-(defn vec2d [x y] {:x x :y y})
-
-(defn vec2d-x [v] (:x v))
-
-(defn vec2d-y [v] (:y v))
-
-(defn tortuga
-  "crea una nueva tortuga con sus coordenadas y angulo iniciales"
-  [coordenadas angulo]
-  {:coordenadas coordenadas :angulo angulo})
-
-(defn tortuga-angulo [t] (:angulo t))
-
-(defn tortuga-coordenadas [t] (:coordenadas t))
-
-(defn tortuga-avanzar
-  "hace que la tortuga que recibe avanze una unidad, actualizando sus coordenadas
-   segun el angulo actual de la tortuga"
-  [t]
-  (let [angulo-actual (clojure.math/to-radians (tortuga-angulo t))
-        posicion-actual (tortuga-coordenadas t)
-        seno-angulo (clojure.math/sin angulo-actual)
-        coseno-angulo (clojure.math/cos angulo-actual)
-        nuevo-x (+ (* 10 coseno-angulo) (vec2d-x posicion-actual))
-        nuevo-y (+ (* 10 seno-angulo) (vec2d-y posicion-actual))
-        nueva-posicion (vec2d nuevo-x nuevo-y)]
-    (tortuga nueva-posicion  (tortuga-angulo t))))
-
-
-(defn tortuga-rotar
-  "gira la tortuga la cantidad de grados indicados"
-  [t giro]
-  (tortuga (tortuga-coordenadas t) (+ giro (tortuga-angulo t))))
-
-(defn tortuga-comparar
-  "recibe dos tortugas y devuelve true si ambas tienen la misma posicion"
-  [a b]
-  (let [coords-a (tortuga-coordenadas a)
-        coords-b (tortuga-coordenadas b)]
-    (= coords-a coords-b)))
 
 (defn aplicar-reglas
   "dada una cadena y un mapa de reglas,
@@ -81,27 +41,6 @@
                      nil) cadena)) )
 
 
-(defn parsear-sistema-L
-  "dado un conjunto de lineas de texto,
-  parsea y devuelve un mapa que representa un sistema L
-  con angulo, axioma y reglas."
-  [lineas]
-  (let [angulo (Double/parseDouble (first lineas))
-        axioma (second lineas)
-        reglas (into {} (map (fn [linea]
-                               (let [[pred suc] (str/split linea #" ")]
-                                 [(first pred) suc]))
-                             (drop 2 lineas)))]
-    {:angulo angulo :axioma axioma :reglas reglas}))
-
-
-(defn leer-archivo
-  "lee todas las líneas de un archivo y devuelve como una secuencia"
-  [nombre-archivo]
-  (with-open [reader (clojure.java.io/reader nombre-archivo)]
-    (doall (line-seq reader))))
-
-
 (defn linea-formateada
   "dada una tortuga con la posicion de inicio y otra con el fin, obtiene una cadena con el formato deseado de svg"
   [t-inicio t-fin]
@@ -111,6 +50,29 @@
     (Locale/setDefault Locale/US)
     (apply #(format s %1 %2 %3 %4) (concat coords-inicio coords-final))))
 
+(defn accion-apilar
+  [pila estados]
+  (assoc estados
+    :tortuga (first pila)
+    :checkpoint (first pila)
+    :pila (pop pila)
+    :escribir-archivo  true
+    :pluma-arriba true))
+
+(defn accion-pluma-arriba
+  [t c estados]
+  (assoc estados
+    :tortuga (tortuga-avanzar t)
+    :checkpoint (tortuga-avanzar t)
+    :escribir-archivo (not (tortuga-comparar t c))
+    :pluma-arriba true))
+
+(defn accion-girar
+  [t angulo estados]
+  (assoc estados
+    :tortuga (tortuga-rotar t angulo)
+    :checkpoint t
+    :escribir-archivo true))
 
 (defn aplicar-accion
   "recibe la tortuga actual, el checkpoint, la pila, y las acciones
@@ -119,25 +81,13 @@
   (let [accion (first v)
         angulo (second v)
         estados {:tortuga t :checkpoint c :pila p :escribir-archivo false :pluma-arriba false}
-        girar (fn [a d] (assoc d :tortuga (tortuga-rotar t a) :checkpoint t :escribir-archivo true))
         acciones {:adelante #(update % :tortuga tortuga-avanzar),
-                  :pluma-arriba #(assoc %
-                                   :tortuga (tortuga-avanzar t)
-                                   :checkpoint (tortuga-avanzar t)
-                                   :escribir-archivo (not (tortuga-comparar t c))
-                                   :pluma-arriba true),
-                  :derecha #((partial girar angulo) %),
-                  :izquierda #((partial girar (- angulo)) %),
-                  :invertir #((partial girar 180) %),
+                  :pluma-arriba #((partial accion-pluma-arriba t c) %),
+                  :derecha #((partial accion-girar t angulo) %),
+                  :izquierda #((partial accion-girar t (- angulo)) %),
+                  :invertir #((partial accion-girar t 180) %),
                   :apilar (fn [d] (update d :pila #(conj % t))),
-                  :desapilar #(assoc %
-                                :tortuga (first p)
-                                :checkpoint (first p)
-                                :pila (pop p)
-                                :escribir-archivo  true
-                                :pluma-arriba true)}]
-    (println accion)
-    (println ((accion acciones) estados))
+                  :desapilar #((partial accion-apilar p) %)}]
     ((accion acciones) estados)))
 
 
@@ -181,5 +131,4 @@
         lineas (leer-archivo archivo-entrada)
         sistema (parsear-sistema-L lineas)
         comandos (generar-comandos (expandir (:axioma sistema) (:reglas sistema) iteraciones) (:angulo sistema))]
-    (println comandos)
     (escribir-archivo archivo-salida comandos)))
