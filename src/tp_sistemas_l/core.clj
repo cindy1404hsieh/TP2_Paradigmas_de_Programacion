@@ -26,8 +26,8 @@
         posicion-actual (tortuga-coordenadas t)
         seno-angulo (clojure.math/sin angulo-actual)
         coseno-angulo (clojure.math/cos angulo-actual)
-        nuevo-x (+ (* 5 coseno-angulo) (vec2d-x posicion-actual))
-        nuevo-y (+ (* 5 seno-angulo) (vec2d-y posicion-actual))
+        nuevo-x (+ (* 10 coseno-angulo) (vec2d-x posicion-actual))
+        nuevo-y (+ (* 10 seno-angulo) (vec2d-y posicion-actual))
         nueva-posicion (vec2d nuevo-x nuevo-y)]
     (tortuga nueva-posicion  (tortuga-angulo t))))
 
@@ -134,7 +134,10 @@
                                 :tortuga (first p)
                                 :checkpoint (first p)
                                 :pila (pop p)
-                                :escribir-archivo  true)}]
+                                :escribir-archivo  true
+                                :pluma-arriba true)}]
+    (println accion)
+    (println ((accion acciones) estados))
     ((accion acciones) estados)))
 
 
