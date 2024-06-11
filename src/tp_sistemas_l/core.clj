@@ -121,7 +121,7 @@
   "aplica las acciones de la secuencia de instrucciones
    tiene como precondicion que el archivo de salida este abierto"
   [nombre-archivo instrucciones]
-  (loop [tortuga-actual (tortuga (vec2d 0.0 0.0) 90)
+  (loop [tortuga-actual (tortuga (vec2d 0.0 0.0) 270)
          tortuga-checkpoint tortuga-actual                  ;llamo checkpoint a la ultima posicion que se escribio en el archivo
          pila-tortugas (list)
          secuencia instrucciones
