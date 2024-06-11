@@ -50,6 +50,16 @@
     (Locale/setDefault Locale/US)
     (apply #(format s %1 %2 %3 %4) (concat coords-inicio coords-final))))
 
+(defn formato-medidas
+  [medidas]
+  (let [x-min (medidas 0)
+        y-min (medidas 1)
+        ancho (- (medidas 2) x-min)
+        altura (- (medidas 3) y-min)
+        s "<svg viewBox=\"%f %f %f %f\" xmlns=\"http://www.w3.org/2000/svg\">"]
+    (Locale/setDefault Locale/US)
+    (apply #(format s %1 %2 %3 %4) [x-min y-min ancho altura])))
+
 (defn accion-apilar
   [pila estados]
   (assoc estados
@@ -90,34 +100,52 @@
                   :desapilar #((partial accion-apilar p) %)}]
     ((accion acciones) estados)))
 
+(defn escribir-archivo
+  "escribe un archivo con formato svg, siguiendo las instrucciones recibidas"
+  [nombre-archivo lineas medidas]
+  (with-open [wrtr (clojure.java.io/writer nombre-archivo)]
+    (.write wrtr (str (formato-medidas medidas) lineas "</svg>"))))
+
+(defn obtener-medidas
+  "recibe un vector con las medidas actuales, y lo actualiza en base a las coordenadas de la tortuga actual"
+  [v t]
+  (let [x-tortuga (:x (tortuga-coordenadas t))
+        y-tortuga (:y (tortuga-coordenadas t))
+        x-min (min (v 0) x-tortuga)
+        y-min (min (v 1) y-tortuga)
+        x-max (max (v 2) x-tortuga)
+        y-max (max (v 3) y-tortuga)]
+    [x-min y-min x-max y-max]))
 
 (defn ejecutar-instrucciones
   "aplica las acciones de la secuencia de instrucciones
    tiene como precondicion que el archivo de salida este abierto"
-  [wrtr instrucciones]
+  [nombre-archivo instrucciones]
   (loop [tortuga-actual (tortuga (vec2d 0.0 0.0) 90)
          tortuga-checkpoint tortuga-actual                  ;llamo checkpoint a la ultima posicion que se escribio en el archivo
          pila-tortugas (list)
-         secuencia instrucciones]
+         secuencia instrucciones
+         lineas ""
+         medidas [0.0 0.0 0.0 0.0]]
     (if ((comp not empty?) secuencia)
       (let [siguiente-instruccion (first secuencia)
             estados (aplicar-accion tortuga-actual tortuga-checkpoint pila-tortugas siguiente-instruccion)
             linea (linea-formateada
                     tortuga-checkpoint
-                    (if (:pluma-arriba estados) tortuga-actual (:tortuga estados)))]
-        (if (:escribir-archivo estados) (.write wrtr linea))
-        (if (empty? (rest secuencia))                         ;ultima iteracion, debo escribir una linea
-          (.write wrtr (linea-formateada (:checkpoint estados) (:tortuga estados))))
-        (recur (:tortuga estados) (:checkpoint estados) (:pila estados) (rest secuencia))))))
+                    (if (:pluma-arriba estados) tortuga-actual (:tortuga estados)))
+            sig-linea (if (:escribir-archivo estados) (str lineas linea) lineas)]
+        (if (empty? (rest secuencia))
+          (escribir-archivo nombre-archivo (str sig-linea (linea-formateada (:checkpoint estados) (:tortuga estados))) (obtener-medidas medidas (:tortuga estados))))
+        (recur
+          (:tortuga estados)
+          (:checkpoint estados)
+          (:pila estados)
+          (rest secuencia)
+          sig-linea
+          (obtener-medidas medidas (:tortuga estados)))))))
 
 
-(defn escribir-archivo
-  "escribe un archivo con formato svg, siguiendo las instrucciones recibidas"
-  [nombre-archivo instrucciones]
-  (with-open [wrtr (clojure.java.io/writer nombre-archivo)]
-    (.write wrtr "<svg viewBox=\"-50 -150 500 700\" xmlns=\"http://www.w3.org/2000/svg\">")
-    (ejecutar-instrucciones wrtr instrucciones)
-    (.write wrtr "</svg>")))
+
 
 
 (defn -main
@@ -131,4 +159,4 @@
         lineas (leer-archivo archivo-entrada)
         sistema (parsear-sistema-L lineas)
         comandos (generar-comandos (expandir (:axioma sistema) (:reglas sistema) iteraciones) (:angulo sistema))]
-    (escribir-archivo archivo-salida comandos)))
+    (ejecutar-instrucciones archivo-salida comandos)))
