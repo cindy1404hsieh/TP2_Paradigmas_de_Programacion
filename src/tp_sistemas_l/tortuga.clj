@@ -39,3 +39,43 @@
   (let [coords-a (tortuga-coordenadas a)
         coords-b (tortuga-coordenadas b)]
     (= coords-a coords-b)))
+
+(defn accion-apilar
+  [pila estados]
+  (assoc estados
+    :tortuga (first pila)
+    :checkpoint (first pila)
+    :pila (pop pila)
+    :escribir-archivo  true
+    :pluma-arriba true))
+
+(defn accion-pluma-arriba
+  [t c estados]
+  (assoc estados
+    :tortuga (tortuga-avanzar t)
+    :checkpoint (tortuga-avanzar t)
+    :escribir-archivo (not (tortuga-comparar t c))
+    :pluma-arriba true))
+
+(defn accion-girar
+  [t angulo estados]
+  (assoc estados
+    :tortuga (tortuga-rotar t angulo)
+    :checkpoint t
+    :escribir-archivo true))
+
+(defn aplicar-accion
+  "recibe la tortuga actual, el checkpoint, la pila, y las acciones
+   que afectaran el estado de alguna de estas"
+  [t c p v]
+  (let [accion (first v)
+        angulo (second v)
+        estados {:tortuga t :checkpoint c :pila p :escribir-archivo false :pluma-arriba false}
+        acciones {:adelante #(update % :tortuga tortuga-avanzar),
+                  :pluma-arriba #((partial accion-pluma-arriba t c) %),
+                  :derecha #((partial accion-girar t angulo) %),
+                  :izquierda #((partial accion-girar t (- angulo)) %),
+                  :invertir #((partial accion-girar t 180) %),
+                  :apilar (fn [d] (update d :pila #(conj % t))),
+                  :desapilar #((partial accion-apilar p) %)}]
+    ((accion acciones) estados)))
