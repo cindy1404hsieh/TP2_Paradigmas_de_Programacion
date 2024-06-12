@@ -35,13 +35,7 @@
             sig-linea (if (:escribir-archivo estados) (str lineas linea) lineas)]
         (when (empty? (rest secuencia))
           (escribir-archivo nombre-archivo (str sig-linea (linea-formateada tc-siguiente t-siguiente)) (obtener-medidas medidas t-siguiente)))
-        (recur
-          t-siguiente
-          tc-siguiente
-          (:pila estados)
-          (rest secuencia)
-          sig-linea
-          (obtener-medidas medidas tc-siguiente))))))
+        (recur t-siguiente tc-siguiente (:pila estados) (rest secuencia) sig-linea (obtener-medidas medidas tc-siguiente))))))
 
 (defn -main
   "toma argumentos desde la linea de comandos: archivo de entrada, numero de iteraciones y archivo de salida
