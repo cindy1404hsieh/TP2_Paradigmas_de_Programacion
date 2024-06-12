@@ -40,7 +40,7 @@
 (defn -main
   "toma argumentos desde la linea de comandos: archivo de entrada, numero de iteraciones y archivo de salida
   lee el archivo de entrada y parsea el sistema L
-  evoluciona el axioma y genera comandos."
+  evoluciona el axioma y genera comandos"
   [& args]
   (let [archivo-entrada (first args)
         iteraciones (Integer/parseInt (second args))
