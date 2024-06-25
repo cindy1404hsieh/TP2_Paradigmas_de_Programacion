@@ -1,26 +1,11 @@
-# comando
-hasta ahora se corre como:
+
+## Integrantes: Tomas Lanfranco 110883 Cindy Teresa Hsieh 108051
+## tp_sistemas_l
+![image](https://github.com/cindy1404hsieh/TP2_Paradigmas_de_Programacion/assets/90338162/abd477c2-8e44-4d16-a3fc-bce4f35dab32)
+
+## Comando  
+```
 lein run resources/arbol1.sl 5 arbol1.svg
-# Integrantes: Tomas Lanfranco 110883 Cindy Teresa Hsieh 108051
-# tp_sistemas_l
+```
 
-A Clojure library designed to ... well, that part is up to you.
 
-## Usage
-
-FIXME
-
-## License
-
-Copyright © 2024 FIXME
-
-This program and the accompanying materials are made available under the
-terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
-
-This Source Code may also be made available under the following Secondary
-Licenses when the conditions for such availability set forth in the Eclipse
-Public License, v. 2.0 are satisfied: GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or (at your
-option) any later version, with the GNU Classpath Exception which is available
-at https://www.gnu.org/software/classpath/license.html.
